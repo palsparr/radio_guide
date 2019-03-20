@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:transparent_image/transparent_image.dart';
 
 void main() => runApp(MyApp());
 
@@ -56,17 +55,18 @@ class _MyHomePageState extends State<MyHomePage> {
   List programs = new List();
   var isLoading = false;
   var pagination;
+  TrackingScrollController scrollController =TrackingScrollController();
 
-  void fetchPost() async {
-    print('Trying to fetch Data');
-    String url = 'http://api.sr.se/api/v2/programs?format=json&size=40%E2%80%9C';
-    final response = await http.get(url.isNotEmpty ? url : 'http://api.sr.se/api/v2/programs?format=json&size=40%E2%80%9C');
+  void fetchData(url) async {
     setState(() {
       isLoading = true;
     });
+    print('Trying to fetch Data');
+    //String url = 'http://api.sr.se/api/v2/programs?format=json&size=40%E2%80%9C';
+    final response = await http.get(url.isNotEmpty ? url : 'http://api.sr.se/api/v2/programs?format=json&size=40%E2%80%9C');
     if (response.statusCode == 200) {
       var responseJSON = json.decode(response.body);
-      List list =responseJSON['programs'];
+      List list = responseJSON['programs'];
       setState(() {
         programs.addAll(list);
         pagination = responseJSON['pagination'];
@@ -74,49 +74,47 @@ class _MyHomePageState extends State<MyHomePage> {
       });
     } else {
       print('Error getting program list: ${response.statusCode}');
+      setState(() {
+        isLoading = false;
+      });
     }
     print('PROGRAMS: ${programs}');
   }
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  onScroll() {
+    double height = MediaQuery.of(context).size.height;
+    //100 is the height of 1 listItem
+    var itemsPerPage = height / 100;
+    print('They see me scrollin.. ${scrollController.offset}, programs: ${programs.length}');
+    if (scrollController.offset >= (programs.length - itemsPerPage) * 100 && !isLoading) {
+      //Start loading new items when the user scrolled to the second to last page.
+      print('Gonna fetch new shit now');
+      fetchData(pagination['nextpage']);
+    }
   }
 
   @override
   void initState() {
     super.initState();
-    print('FETCHING POOOOST!!!');
-    fetchPost();
+    print('FETCHING PROGRAMS!');
+    fetchData('');
+    scrollController.addListener(onScroll);
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+
+
     return Scaffold(
       appBar: AppBar(
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: isLoading
-    ? Center(
-        child: CircularProgressIndicator(),
-      )
-    : ListView.builder(
+      body: ListView.builder(
         padding: EdgeInsets.only(top: 20.0),
         itemCount: programs.length,
+        controller: scrollController,
         itemBuilder: (BuildContext context, int index) {
           return Container(
             padding: EdgeInsets.all(4.0),
