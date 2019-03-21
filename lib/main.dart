@@ -12,19 +12,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Radio Guide',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
+        //Setting colors for the app
         primarySwatch: Colors.teal,
         scaffoldBackgroundColor: Colors.teal[400],
 
       ),
+      //Seting the home page of the app
       home: MyHomePage(title: 'Home'),
     );
   }
@@ -34,14 +27,6 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatefulWidget {
   MyHomePage({Key key, this.title}) : super(key: key);
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   final String title;
 
@@ -52,22 +37,22 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
   List programs = new List();
   var isLoading = false;
   var pagination;
   TrackingScrollController scrollController =TrackingScrollController();
 
   void fetchData(url) async {
+    //Setting isLoading to true to prevent the app from trying to load the same data several times as a result of scrolling
     setState(() {
       isLoading = true;
     });
-    print('Trying to fetch Data');
-    //String url = 'http://api.sr.se/api/v2/programs?format=json&size=40%E2%80%9C';
+    print('Trying to fetch programs');
     final response = await http.get(url.isNotEmpty ? url : 'http://api.sr.se/api/v2/programs?format=json&size=40%E2%80%9C');
     if (response.statusCode == 200) {
       var responseJSON = json.decode(response.body);
       List list = responseJSON['programs'];
+      //Update the programs list and setting isLoading to false
       setState(() {
         programs.addAll(list);
         pagination = responseJSON['pagination'];
@@ -75,6 +60,7 @@ class _MyHomePageState extends State<MyHomePage> {
       });
     } else {
       print('Error getting program list: ${response.statusCode}');
+      //Not updating programs since an error occurred. Still setting isLoading to false since app is not loading anymore
       setState(() {
         isLoading = false;
       });
@@ -83,13 +69,15 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   onScroll() {
+    //Get screen height
     double height = MediaQuery.of(context).size.height;
-    //100 is the height of 1 listItem
+    //Calculate items per screen to find out when to load new programs. 100 is the height of one item in the list
     var itemsPerPage = height / 100;
     print('They see me scrollin.. ${scrollController.offset}, programs: ${programs.length}');
     if (scrollController.offset >= (programs.length - itemsPerPage) * 100 && !isLoading) {
-      //Start loading new items when the user scrolled to the second to last page.
-      print('Gonna fetch new shit now');
+      //Start loading new items when the user scrolled to the second to last page. 
+      //The URL provided in the argument is from the pagination data of the last fetchData() call.
+      //Only load new items if the app isn't already loading. (isLoading = false)
       fetchData(pagination['nextpage']);
     }
   }
@@ -97,7 +85,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    print('FETCHING PROGRAMS!');
+    //Fetch first page of programs. Argument is '' to ensure that fetchData() uses the default URL.
     fetchData('');
     scrollController.addListener(onScroll);
   }
@@ -108,13 +96,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title, style: TextStyle(fontFamily: 'TitilliumWeb')),
       ),
       body: ListView.builder(
         padding: EdgeInsets.only(top: 20.0),
         itemCount: programs.length,
+        //Custom scroll controller to enable pagination
         controller: scrollController,
         itemBuilder: (BuildContext context, int index) {
           return Container(
@@ -124,6 +111,7 @@ class _MyHomePageState extends State<MyHomePage> {
             child: ListTile(
               contentPadding: EdgeInsets.all(0.0),
               title: new Text(programs[index]['name'], style: TextStyle(color: Colors.white, fontSize: 20.0, fontFamily: 'TitilliumWeb'),),
+              //Using placeholder in case of slow internet speed
               leading: new FadeInImage.assetNetwork(
                 placeholder: 'assets/radio_placeholder.png',
                 image: programs[index]['programimage'],
@@ -132,6 +120,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 width: 80,
               ),
               onTap: () => {
+                //Navigate to detail page of the program
                 Navigator.of(context).push(new MaterialPageRoute(builder: 
                    (BuildContext context) => new DetailPage(program: programs[index])))
               }
@@ -186,7 +175,7 @@ class _DetailPageState extends State<DetailPage> {
       }
     }
   }
-  //Redirect to social media through clicking on the corresponding logo
+  //Redirect to social media after the user clicks on the corresponding logo
   launchUrl(url) async {
     if (await canLaunch(url)) {
     await launch(url);
@@ -197,24 +186,19 @@ class _DetailPageState extends State<DetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    //Getting the screen size for later use, placed in the build method to get correct values even if the screen orientation changes.
     double width = MediaQuery.of(context).size.width;
-    
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+
     return Scaffold(
       appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(program['name'], style: TextStyle(fontFamily: 'TitilliumWeb'),),
       ),
+      //Making the page scrollable to accomodate smaller screen devices
       body: SingleChildScrollView(
         child: Center(
           child: Column(
             children: <Widget>[
+              //Using a placeholder while the image loads in case of slow internet speed
               new FadeInImage.assetNetwork(
                 placeholder: 'assets/radio_placeholder_large.png',
                 image: program['programimage'],
@@ -230,10 +214,11 @@ class _DetailPageState extends State<DetailPage> {
                 padding: EdgeInsets.all(5.0),
                 child: Text('Editor: ${program['responsibleeditor']}', style: TextStyle(fontFamily: 'TitilliumWeb', fontSize: 14.0, color: Colors.white, fontStyle: FontStyle.italic ), textAlign: TextAlign.center,),
               ),
+              //Social Media Links
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  //Twitter logo
+                  //Twitter logo only show if platform is available
                   twitter.isNotEmpty ? Container(
                     padding: EdgeInsets.all(10.0),
                     margin: EdgeInsets.symmetric(horizontal: 10.0, vertical: 15.0),
@@ -248,7 +233,7 @@ class _DetailPageState extends State<DetailPage> {
                     ),
                     
                   ) : Container(),
-                  //Instagram logo
+                  //Instagram logo only show if platform is available
                   instagram.isNotEmpty ? Container(
                     padding: EdgeInsets.all(10.0),
                     margin: EdgeInsets.symmetric(horizontal: 10.0, vertical: 15.0),
@@ -262,7 +247,7 @@ class _DetailPageState extends State<DetailPage> {
                       ),
                     ),
                   ) : Container(),
-                  //Facebook logo
+                  //Facebook logo only show if platform is available
                   facebook.isNotEmpty ? Container(
                     padding: EdgeInsets.all(10.0),
                     margin: EdgeInsets.symmetric(horizontal: 10.0, vertical: 15.0),
