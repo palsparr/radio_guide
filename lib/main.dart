@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() => runApp(MyApp());
 
@@ -109,7 +110,7 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text(widget.title, style: TextStyle(fontFamily: 'TitilliumWeb')),
       ),
       body: ListView.builder(
         padding: EdgeInsets.only(top: 20.0),
@@ -130,7 +131,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 height: 80,
                 width: 80,
               ),
-              onTap: () => {}
+              onTap: () => {
+                Navigator.of(context).push(new MaterialPageRoute(builder: 
+                   (BuildContext context) => new DetailPage(program: programs[index])))
+              }
             ),
           );
         }),
@@ -139,18 +143,9 @@ class _MyHomePageState extends State<MyHomePage> {
 }
 
 class DetailPage extends StatefulWidget {
-  DetailPage({Key key, this.title}) : super(key: key);
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+  DetailPage({Key key, this.program}) : super(key: key);
+  //Data for the program that the user clicked on
+  final program;
 
   @override
   _DetailPageState createState() => _DetailPageState();
@@ -159,16 +154,51 @@ class DetailPage extends StatefulWidget {
 }
 
 class _DetailPageState extends State<DetailPage> {
-  List programs = new List();
-  var isLoading = false;
+  var program;
+  //URLs for social media platforms. Empty if the platform is unavailable
+  var twitter = '';
+  var instagram = '';
+  var facebook = '';
 
   @override
   void initState() {
     super.initState();
+    print('Program: ${widget.program}');
+    program = widget.program;
+    findSocialMediaPlatforms();
+  }
+  //Find what social media platforms are available for the program and save the url
+  findSocialMediaPlatforms() {
+    var socialMediaPlatforms = program['socialmediaplatforms'];
+    for (int i = 0; i < socialMediaPlatforms.length; i++) {
+      var platform = socialMediaPlatforms[i];
+      switch (platform['platform']) {
+        case 'Twitter':
+          twitter = platform['platformurl'];
+          break;
+        case 'Facebook':
+          facebook = platform['platformurl'];
+          break;
+        case 'Instagram':
+          instagram = platform['platformurl'];
+          break;        
+        default:
+      }
+    }
+  }
+  //Redirect to social media through clicking on the corresponding logo
+  launchUrl(url) async {
+    if (await canLaunch(url)) {
+    await launch(url);
+    } else {
+      throw 'Could not reach $url';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    double width = MediaQuery.of(context).size.width;
+    
     // This method is rerun every time setState is called, for instance as done
     // by the _incrementCounter method above.
     //
@@ -179,10 +209,78 @@ class _DetailPageState extends State<DetailPage> {
       appBar: AppBar(
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: Text(program['name'], style: TextStyle(fontFamily: 'TitilliumWeb'),),
       ),
-      body: Center(
-
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            children: <Widget>[
+              new FadeInImage.assetNetwork(
+                placeholder: 'assets/radio_placeholder_large.png',
+                image: program['programimage'],
+                fit: BoxFit.cover,
+                height: width,
+                width: width,
+              ),
+              Container(
+                padding: EdgeInsets.all(10.0),
+                child: Text(program['description'], style: TextStyle(fontFamily: 'TitilliumWeb', fontSize: 22.0, color: Colors.white, ), textAlign: TextAlign.center,),
+              ),
+              Container(
+                padding: EdgeInsets.all(5.0),
+                child: Text('Editor: ${program['responsibleeditor']}', style: TextStyle(fontFamily: 'TitilliumWeb', fontSize: 14.0, color: Colors.white, fontStyle: FontStyle.italic ), textAlign: TextAlign.center,),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  //Twitter logo
+                  twitter.isNotEmpty ? Container(
+                    padding: EdgeInsets.all(10.0),
+                    margin: EdgeInsets.symmetric(horizontal: 10.0, vertical: 15.0),
+                    child: GestureDetector(
+                      onTap: () => {launchUrl(twitter)},
+                      child: Image(
+                        image: AssetImage('assets/twitter_logo.png'),                    
+                        fit: BoxFit.cover,
+                        height: 60.0,
+                        width: 60.0,
+                      ),
+                    ),
+                    
+                  ) : Container(),
+                  //Instagram logo
+                  instagram.isNotEmpty ? Container(
+                    padding: EdgeInsets.all(10.0),
+                    margin: EdgeInsets.symmetric(horizontal: 10.0, vertical: 15.0),
+                    child: GestureDetector(
+                      onTap: () => {launchUrl(instagram)},
+                      child: Image(
+                        image: AssetImage('assets/instagram_logo.png'),                    
+                        fit: BoxFit.cover,
+                        height: 60.0,
+                        width: 60.0,
+                      ),
+                    ),
+                  ) : Container(),
+                  //Facebook logo
+                  facebook.isNotEmpty ? Container(
+                    padding: EdgeInsets.all(10.0),
+                    margin: EdgeInsets.symmetric(horizontal: 10.0, vertical: 15.0),
+                    child: GestureDetector(
+                      onTap: () => {launchUrl(facebook)},
+                      child: Image(
+                        image: AssetImage('assets/facebook_logo.png'),                    
+                        fit: BoxFit.cover,
+                        height: 60.0,
+                        width: 60.0,
+                      ),
+                    ),
+                  ) : Container(),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
